@@ -1,24 +1,26 @@
 # Bearer 与JWT(json web token) 
 
-问题背景
+## 问题背景
 
-在多个资源系统需要通过认证系统进认证的情况下，基于session/cookie的方式存在的问题
+用户需要多个资源系统，通过认证系统进认证实现SSO的情况下，基于session/cookie的方式存在一些问题：
 
 1）跨域的问题，不同域下的cookie/session无法共享。
 
 2）即使使用同一个域名共享cookie ,资源系统通常需要回调认证中心验证cookie种用户token的有有效性。
 
-解决办法
+## 解决办法
 
 Http Bearer 认证方式是解决第一个问题的一种方式。客户端通过在 资源系统通过Http Header的Authentication获取Bearer Token信息完成身份验证。
 
-JWT是Token的编码的一种规则。 采用json格式，格式如下：
-
 ```
-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYmYiOjE2NTcxNjI4MzksImV4cCI6MTY1OTc1NDgzOSwiaWF0IjoxNjU3MTYyODM5LCJ1c2VyIjp7ImlkIjoxMDAwMywidXNlcm5hbWUxxxxxxxxxxx.9aBNWsGPauPBubGRi72Kr27KERxxxxxxxxxx
+Authentication Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYmYiOjE2NTcxNjI4MzksImV4cCI6MTY1OTc1NDgzOSwiaWF0IjoxNjU3MTYyODM5LCJ1c2VyIjp7ImlkIjoxMDAwMywidXNlcm5hbWUxxxxxxxxxxx.9aBNWsGPauPBubGRi72Kr27KERxxxxxxxxxx
 ```
 
-header、claim、签名  三个部分，用点号分隔 。 
+JWT是Token编码的一种方式， Bearer中使用的token通常采用的JWT编码方式。 
+
+JWT的原始信息为json格式，再进行base64编码和签名，格式如下：
+
+包含header、claim、签名  三个部分，用点号分隔 。 
 
 header 部分内容结构固定，包含typ和alg两部分。
 
@@ -33,9 +35,11 @@ signature ：9aBNWsGPauPBubGRi72Kr27KERxxxxxxxxxx
 
 
 
-存在的问题，使用时需要避开。
+## 存在的缺点
 
-1. 有效期保证在token种，无法使token提前失效，只能通过保存/同步强制失效的token，让资源服务器获得失效的token信息。
+Bearer JWT存在的问题，使用时需要避开。
+
+1. 有效期保证在token种，无法使token提前失效，用增加方案来弥补，可以是通过保存/同步强制失效的token，让资源服务器获得失效的token信息。
 2. token中保存的信息不加密，可能泄露信息。
 3. 如果token包含详细的权限的信息，token长度会变大， 类似keystone 中的PKI token 大小很容易超过10k 。
 
