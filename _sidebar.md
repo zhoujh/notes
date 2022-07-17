@@ -6,4 +6,4 @@ FLINK
 
 其他
 
-* [使用JWT token实现单点认证](../uncategorical/jwt.md)
+* [使用JWT token实现单点认证](./other/jwt.md)
