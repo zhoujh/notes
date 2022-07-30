@@ -40,15 +40,15 @@ SpringWeb DeferredResult使用方式
 
 ### Spring针对DeferredResult的处理入口
 
-    在springMvc处理返回值时，在HandlerMethodReturnValueHandlerComposite 中选择类DeferredResultMethodReturnValueHandler 来处理返回参数为DeferredResult的结果处理， DeferredResultMethodReturnValueHandler通过WebAsyncManager 来管理异步请求。
+在springMvc处理返回值时，在HandlerMethodReturnValueHandlerComposite 中选择类DeferredResultMethodReturnValueHandler 来处理返回参数为DeferredResult的结果处理， DeferredResultMethodReturnValueHandler通过WebAsyncManager 来管理异步请求。
 
-    1）DeferredResultMethodReturnValueHandler.handleReturnValue() ,选择业务方法返回参数的处理：
+1）DeferredResultMethodReturnValueHandler.handleReturnValue() ,选择业务方法返回参数的处理：
 
 ![1659149762344](image/asyn2syn/1659149762344.png)
 
     2）WebAsyncManager中的startDeferredResultProcessing中完成异步处理所需要的超时设置、结果处理器链、超时处理链、异常处理链，以及结果推送类等。
 
-![1659149425505](https://file+.vscode-resource.vscode-cdn.net/c%3A/dev/docsify-notes/notes/spring/image/asyn2syn/1659149425505.png)
+![1659149425505](image/asyn2syn/1659149425505.png)
 
 ```
  	//在处理方法结果时，启动异步处理。
@@ -115,13 +115,13 @@ SpringWeb DeferredResult使用方式
 
 ### Servlet容器提供的API
 
-    针对web请求的异步处理，Servlet向上层Spring提供了主要接口为javax.servlet.AsyncContext。
+针对web请求的异步处理，Servlet向上层Spring提供了主要接口为javax.servlet.AsyncContext。
 
-    Spring通过javax.servlet.ServletRequest.startAsync方法从容器获得的异步处理的上下文AsyncContext/AsyncContextState ，容器通过AsyncContext向应用层/Spring提供了超时设置、结果推送的方法。
+Spring通过javax.servlet.ServletRequest.startAsync方法从容器获得的异步处理的上下文AsyncContext/AsyncContextState ，容器通过AsyncContext向应用层/Spring提供了超时设置、结果推送的方法。
 
-    Jetty的内部通过org.eclipse.jetty.server.HttpChannelState 保存状态变化，控制请求流程。
+Jetty的内部通过org.eclipse.jetty.server.HttpChannelState 保存状态变化，控制请求流程。
 
-    AsyncContextStatet通过与HttpChannelState交互驱动请求的处理流程。
+AsyncContextStatet通过与HttpChannelState交互驱动请求的处理流程。
 
 ```
    /*
@@ -146,24 +146,24 @@ SpringWeb DeferredResult使用方式
 
 ### 关于超时设置
 
-    应用在实例化DeferredResult时设置了超时时间timeout
+应用在实例化DeferredResult时设置了超时时间timeout
 WebAsyncManager在startAsyncProcessing中，通过WebAsyncManager
 -> StandardServletAsyncWebRequest.startAsync() -> StandardServletAsyncWebRequest.setTimeout()
 ->  javax.servlet.AsyncContext.setTimeout  将超时时间传递给servlet容器，由容器来触发超时处理。
 
-    其中StandardServletAsyncWebRequest是spring在处理请求时创建的对象，用于保存request和response ，包括与servlet的容器交互。
+其中StandardServletAsyncWebRequest是spring在处理请求时创建的对象，用于保存request和response ，包括与servlet的容器交互。
 
 ### 关于超时处理
 
-    WebAsyncManager在startDeferredResultProcessingstartAsyncProcessin中实例化了结果处理拦截器链interceptorChain，并在StandardServletAsyncWebRequest设置了超时、结束、错误处理回调，来执行interceptorChain， 容器触发超时后，具体的处理在interceptorChain中处理 ；
+WebAsyncManager在startDeferredResultProcessingstartAsyncProcessin中实例化了结果处理拦截器链interceptorChain，并在StandardServletAsyncWebRequest设置了超时、结束、错误处理回调，来执行interceptorChain， 容器触发超时后，具体的处理在interceptorChain中处理 ；
 
 ### 关于结果处理
 
-    WebAsyncManager在startDeferredResultProcessingstartAsyncProcessin中通过DeferredResult.setResultHandler设置结果处理器。
+WebAsyncManager在startDeferredResultProcessingstartAsyncProcessin中通过DeferredResult.setResultHandler设置结果处理器。
 
-    业务调回Spring的DeferredResult.setResult() 设置返回结果时，WebAsyncManager中的interceptorChain进行拦截处理，最后结果通过WebAsyncManager.setConcurrentResultAndDispatch -> StandardServletAsyncWebRequest.dispatch -> AsyncContext.dispatch  将处理结果交付给servlet容器。
+业务调回Spring的DeferredResult.setResult() 设置返回结果时，WebAsyncManager中的interceptorChain进行拦截处理，最后结果通过WebAsyncManager.setConcurrentResultAndDispatch -> StandardServletAsyncWebRequest.dispatch -> AsyncContext.dispatch  将处理结果交付给servlet容器。
 
-    AsyncContext是spring通过javax.servlet.ServletRequest.startAsync从容器 获得的异步处理的上下文，容器通过AsyncContext向应用提供了结果分发的dispatch方法
+AsyncContext是spring通过javax.servlet.ServletRequest.startAsync从容器 获得的异步处理的上下文，容器通过AsyncContext向应用提供了结果分发的dispatch方法
 
 ## 其他
 
