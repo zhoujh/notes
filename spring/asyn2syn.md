@@ -4,7 +4,7 @@
 
 大致场景是,后端提供一个查询设备状态的Rest Api.
 
-1) web前端向向后端查询设备状态。
+1) web前端向后端查询设备状态。
 2) 后端收到请求之后，通过消息队列向设备发一条指令.
 3) 设备从消息队列接收消息后，通过消息队列返回设备状态。
 4) 后端向前端返回设备状态。
@@ -170,3 +170,52 @@ AsyncContext是spring通过javax.servlet.ServletRequest.startAsync从容器 获�
     从Idea的调试模式的日志来看， org.eclipse.jetty.server接收请求处理的执行线程、超时处理的线程、设置DeferredResult结果的线程、 处理结果dispatch结果的线程，都是不同的。说明接收请求没有一直占用一个线程。
 
     相对与在业务代码中用Lock等待结果的方式，这种方式可以避免处理线程被客户端请求持续占用。
+
+## 使用CompletableFuture进一步优化
+
+DeferredResult 通过Web容器实现了在不占用web线程池的情况下处理异步处理请求。但存在两个问题:
+
+1.异步线程回调通知的代码与DeferredResult耦合。
+
+在上面的场景就是，消费消息队列的线程是直接依赖操了DeferredResul，导致整个处理框架缺乏扩展性，例如：现在需要实现一个定时的查询设备状态，与容器的Web请求无关，方案就不适用了。
+
+2.业务逻辑分散，部分结果处理的业务逻辑在异步服务模块中实现。
+
+因为异步服务的模块是直接操作DeferredResult，在设置结果之前需要做的业务逻辑，比如保持结果到数据库，就只能在异步处理模块中完成。
+
+因此在引入DeferredResult实现Web请求异步处理的基础上。增加CompletableFuture实现应用层异步处理的。
+
+大致处理过程如下：
+
+1) Web Controller接收到请求后，构造一个的DeferrendResult、一个随机的请求的reqId，确定结果处理的方法、异常处理方法、超时处理方法 ，通过确定结果处理的方法、异常处理方法、超时处理方法 构造一个CompletableFutrue，将CompletableFutrue和reqId提交给同步服务管理模块SynSvr。
+2) SynSvr 将reqId和CompletableFutrue保存在内存中。
+3) Web Controller 调用业务处理模块通过消息队列向设备发送请求。
+4) 结果接收模块监听结果队列，获得设备的处理结果。
+5) 结果接收模块业务处理模块，解析处理结果获得reqId,和执行结果，调用SynSvr。
+6) SynSvr根据reqId查找CompletableFutrue，通过complete,触发Web Controller提供的结果处理方法，异常情况，也可以通过completeExceptionally触发异常处理方法。
+7) Web Controller 在结果处理方法中进行调用业务代码处理结果，并向DeferrendResult设置web返回结果。
+
+````mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant SpringMVC
+    Client ->>SpringMVC: getDevcieStatus
+    SpringMVC ->> MyController: getDevcieStatus
+    MyController ->>MyController: create reqId
+    MyController ->>DeferedResult: new
+    MyController ->>ResultFuncton: new (deferedResult)
+    MyController -->CompletableFuture: new (resultFuncton)
+    MyController ->> SynSvc: startRequest(reqId,completableFutrue)
+    MyController ->> BizService: getDevcieStatus
+    BizService   ->> MQ: send  Command
+    MQ           ->> Device:  receive Command
+    Device       ->> MQ: send result  
+    MQ           ->> BizService: receive result
+    BizService   ->> SynSvc: onResult
+    SynSvc       ->> CompletableFuture: complete
+    CompletableFuture ->> ResultFuncton: apply
+    ResultFuncton   ->> ResultFuncton: complete(result)
+
+
+````
