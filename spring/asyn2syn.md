@@ -204,8 +204,8 @@ sequenceDiagram
     SpringMVC ->> MyController: getDevcieStatus
     MyController ->>MyController: create reqId
     MyController ->>DeferedResult: new
-    MyController ->>ResultFuncton: new (deferedResult)
-    MyController -->CompletableFuture: new (resultFuncton)
+    MyController ->>CallbackFuncton: new (deferedResult)
+    MyController -->CompletableFuture: new (callbackFuncton)
     MyController ->> SynSvc: startRequest(reqId,completableFutrue)
     MyController ->> BizService: getDevcieStatus
     BizService   ->> MQ: send  Command
